@@ -7,15 +7,12 @@
 
 ## This HEPT Fork uses PQuant for pruning and quantization
 
+Pruning scripts are not yet uploaded.
+Quantization script is uploaded as tracking_quantization.py (can be modified easily for pruning as well)
 
 ## Datasets
-All the datasets can be downloaded and processed automatically by running the scripts in `./src/datasets`, i.e.,
-```
-cd ./src/datasets
-python pileup.py
-python tracking.py -d tracking-6k
-python tracking.py -d tracking-60k
-```
+The quantization script has only been tested with tracking-600 dataset. Copy the tracking-600
+dataset to the folder data/tracking/processed/
 
 ## Installation
 
@@ -30,16 +27,16 @@ pip install git+https://github.com/ArghyaDas112358/PQuant.git@MDMM
 ```
 
 #### Running the code
-To run the code, you can use the following command:
+
+For running the training of the quantized version use
 ```
-python tracking_trainer.py -m hept
+python tracking_quantized.py -m hept
 ```
 
-Or
-```
-python pileup_trainer.py -m hept
-```
 Configurations will be loaded from those located in `./configs/` directory.
+Quantization script was tested with resuming training from a pretrained (non quantized) model with regions = 1
+
+<br>
 
 ## TODO
 - [ ] Put more details in the README.
@@ -70,10 +67,6 @@ There are three key hyperparameters in HEPT:
 -  `num_regions`: # of regions HEPT will randomly divide the input space into (Sec. 4.3 in the paper)
 
 We suggest first determine `block_size` and `n_hashes` according to the computational budget, but generally `n_hashes` should be greater than 1. `num_regions` should be tuned according to the local inductive bias of the dataset.
-
-
-
-
 
 
 ## Reference
