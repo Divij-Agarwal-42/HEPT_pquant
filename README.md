@@ -30,7 +30,7 @@ pip install git+https://github.com/ArghyaDas112358/PQuant.git@MDMM
 
 For running the training of the quantized version use
 ```
-python tracking_quantized.py -m hept
+python tracking_quantizer.py -m hept
 ```
 
 Configurations will be loaded from those located in `./configs/` directory.
