@@ -62,11 +62,11 @@ class Tracking(InMemoryDataset):
         if dataset_name == 'tracking-60k':
             self.n_sectors = 1
         if dataset_name == 'tracking-6k':
-            self.n_sectors = 10 
+            self.n_sectors = 10
         if dataset_name == 'tracking-1200':
             self.n_sectors = 50
         if dataset_name == 'tracking-600':
-            self.n_sectors = 100        
+            self.n_sectors = 100
 
         self.debug = debug
 
@@ -114,7 +114,15 @@ class Tracking(InMemoryDataset):
         return [f"data-{size}.pt"]
 
     def download(self):
-        self.url_processed = self.url_processed_60k if self.dataset_name == "tracking-60k" else self.url_processed_6k
+        self.url_processed = None
+        if self.dataset_name == "tracking-60k":
+            self.url_processed = self.url_processed_60k
+        elif self.dataset_name == "tracking-6k":
+            self.url_processed = self.url_processed_6k
+        else:
+            return
+
+        # self.url_processed = self.url_processed_60k if self.dataset_name == "tracking-60k" else self.url_processed_6k
         warning = "This dataset would need ~65 GB of space after extraction. Do you want to continue? (y/n)\n"
         if osp.exists(self.processed_paths[0]):
             return
@@ -256,3 +264,4 @@ if __name__ == "__main__":
 
     dataset = Tracking(root, args.dataset_name, debug=False)
     print(dataset)
+
