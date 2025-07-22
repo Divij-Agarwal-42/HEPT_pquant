@@ -10,9 +10,13 @@
 Pruning scripts are not yet uploaded.
 Quantization script is uploaded as tracking_quantization.py (can be modified easily for pruning as well)
 
+There are 2 existing PyTorch model files present under `data/tracking/logs/`:
++ Quantized model: Quantized using Fixed point representation (1 sign bit, 7 integer bits, 8 fractional bits), accuracy on tracking-600 is ~87%
++ Pre trained model: Non quantized version with accuracy on tracking-600 as ~89%, regions = 1
+
 ## Datasets
 The quantization script has only been tested with tracking-600 dataset. Copy the tracking-600
-dataset to the folder data/tracking/processed/
+dataset to the folder `data/tracking/processed/`
 
 ## Installation
 
