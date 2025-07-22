@@ -1,5 +1,0 @@
-*
-!.gitignore
-
-!pretrained_model/
-!quantized_model/
