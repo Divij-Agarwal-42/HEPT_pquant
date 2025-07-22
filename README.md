@@ -23,9 +23,10 @@ python tracking.py -d tracking-60k
 We are using `torch 2.3.1` and `pyg 2.5.3` with `python 3.10.14` and `cuda 12.1`. Use the following command to install the required packages:
 ```
 conda env create -f pquant_hept_env.yaml
-pip install --no-deps git+https://github.com/calad0i/HGQ2.git
 pip install torch_geometric==2.5.3
 pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
+pip install --no-deps git+https://github.com/calad0i/HGQ2.git
+pip install git+https://github.com/ArghyaDas112358/PQuant.git@MDMM
 ```
 
 #### Running the code
