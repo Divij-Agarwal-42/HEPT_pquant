@@ -27,8 +27,11 @@ conda env create -f pquant_hept_env.yaml
 pip install torch_geometric==2.5.3
 pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
 pip install --no-deps git+https://github.com/calad0i/HGQ2.git
-pip install git+https://github.com/ArghyaDas112358/PQuant.git@MDMM
 ```
+
+Download PQuant manually, `git clone -b MDMM https://github.com/ArghyaDas112358/PQuant.git`
+Then, go to  `src/pquant/core/torch_impl/compressed_layers_torch.py` and comment out the line: `model(torch.rand(input_shape, device=next(model.parameters()).device))`
+Now, install PQuant using pip install `<Path to PQuant>`
 
 #### Running the code
 
