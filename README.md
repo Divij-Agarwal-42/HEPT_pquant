@@ -7,6 +7,39 @@
 
 ## This HEPT Fork uses PQuant for pruning and quantization
 
+
+## Datasets
+All the datasets can be downloaded and processed automatically by running the scripts in `./src/datasets`, i.e.,
+```
+cd ./src/datasets
+python pileup.py
+python tracking.py -d tracking-6k
+python tracking.py -d tracking-60k
+```
+
+## Installation
+
+#### Environment
+We are using `torch 2.3.1` and `pyg 2.5.3` with `python 3.10.14` and `cuda 12.1`. Use the following command to install the required packages:
+```
+conda env create -f pquant_hept_env.yaml
+pip install --no-deps git+https://github.com/calad0i/HGQ2.git
+pip install torch_geometric==2.5.3
+pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
+```
+
+#### Running the code
+To run the code, you can use the following command:
+```
+python tracking_trainer.py -m hept
+```
+
+Or
+```
+python pileup_trainer.py -m hept
+```
+Configurations will be loaded from those located in `./configs/` directory.
+
 ## TODO
 - [ ] Put more details in the README.
 - [ ] Add support for FlashAttn.
@@ -27,38 +60,6 @@ This study introduces a novel transformer model optimized for large-scale point 
 
 <p align="center"><img src="./data/HEPT.png" width=85% height=85%></p>
 <p align="center"><em>Figure 1.</em>Pipline of HEPT.</p>
-
-## Datasets
-All the datasets can be downloaded and processed automatically by running the scripts in `./src/datasets`, i.e.,
-```
-cd ./src/datasets
-python pileup.py
-python tracking.py -d tracking-6k
-python tracking.py -d tracking-60k
-```
-
-## Installation
-
-#### Environment
-We are using `torch 2.3.1` and `pyg 2.5.3` with `python 3.10.14` and `cuda 12.1`. Use the following command to install the required packages:
-```
-conda env create -f environment.yml
-pip install torch_geometric==2.5.3
-pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
-```
-
-#### Running the code
-To run the code, you can use the following command:
-```
-python tracking_trainer.py -m hept
-```
-
-Or
-```
-python pileup_trainer.py -m hept
-```
-Configurations will be loaded from those located in `./configs/` directory.
-
 ## FAQ
 
 #### How to tune the hyperparameters of HEPT?
