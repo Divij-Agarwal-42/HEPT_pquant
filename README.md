@@ -8,7 +8,7 @@
 ## This HEPT Fork uses PQuant for pruning and quantization
 
 Pruning scripts are not yet uploaded.
-Quantization script is uploaded as tracking_quantization.py (can be modified easily for pruning as well)
+Quantization script is uploaded as `src/tracking_quantization.py` (can be modified easily for pruning as well)
 
 There are 2 existing PyTorch model files present under `data/tracking/logs/`:
 + Quantized model: Quantized using Fixed point representation (1 sign bit, 7 integer bits, 8 fractional bits), accuracy on tracking-600 is ~87%
