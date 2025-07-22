@@ -5,6 +5,8 @@
     <a href="https://arxiv.org/abs/2402.12535"> <img alt="License" src="https://img.shields.io/static/v1?label=Pub&message=ICML%2724&color=blue"></a>
 </p>
 
+## This HEPT Fork uses PQuant for pruning and quantization
+
 ## TODO
 - [ ] Put more details in the README.
 - [ ] Add support for FlashAttn.
