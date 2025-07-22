@@ -29,8 +29,8 @@ pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/wh
 pip install --no-deps git+https://github.com/calad0i/HGQ2.git
 ```
 
-Download PQuant manually, `git clone -b MDMM https://github.com/ArghyaDas112358/PQuant.git`
-Then, go to  `src/pquant/core/torch_impl/compressed_layers_torch.py` and comment out the line: `model(torch.rand(input_shape, device=next(model.parameters()).device))`
+Download PQuant manually, `git clone -b MDMM https://github.com/ArghyaDas112358/PQuant.git`<br>
+Then, go to  `src/pquant/core/torch_impl/compressed_layers_torch.py` and comment out the line: `model(torch.rand(input_shape, device=next(model.parameters()).device))`<br>
 Now, install PQuant using pip install `<Path to PQuant>`
 
 #### Running the code
