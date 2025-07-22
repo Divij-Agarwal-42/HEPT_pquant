@@ -3,7 +3,7 @@ note: k60_rad256_hept
 seed: 42
 log_tensorboard: false
 num_threads: 5
-resume: false
+resume: pretrained_model
 only_eval: true
 
 
