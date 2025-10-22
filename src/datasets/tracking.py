@@ -114,7 +114,15 @@ class Tracking(InMemoryDataset):
         return [f"data-{size}.pt"]
 
     def download(self):
-        self.url_processed = self.url_processed_60k if self.dataset_name == "tracking-60k" else self.url_processed_6k
+        self.url_processed = None
+        if self.dataset_name == "tracking-60k":
+            self.url_processed = self.url_processed_60k
+        elif self.dataset_name == "tracking-6k":
+            self.url_processed = self.url_processed_6k
+        else:
+            return
+
+        # self.url_processed = self.url_processed_60k if self.dataset_name == "tracking-60k" else self.url_processed_6k
         warning = "This dataset would need ~65 GB of space after extraction. Do you want to continue? (y/n)\n"
         if osp.exists(self.processed_paths[0]):
             return

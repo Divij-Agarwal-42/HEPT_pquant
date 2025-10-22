@@ -28,13 +28,20 @@ pip install git+https://github.com/ArghyaDas112358/PQuant.git@MDMM
 
 #### Running the code
 
+Make sure to `cd` into `./src`
+
+For running pruning + quantisation script (can be modified to only prune / quantise):
+```
+python tracking_quantizer_and_pruner.py
+```
+
 For running the training of the quantized version use
 ```
 python tracking_quantizer.py -m hept
 ```
 
 Configurations will be loaded from those located in `./configs/` directory.
-Quantization script was tested with resuming training from a pretrained (non quantized) model with regions = 1
+All scripts were tested with resuming training from a pretrained (non quantized) model with regions = 1
 
 <br>
 
