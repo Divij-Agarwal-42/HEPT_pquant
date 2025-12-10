@@ -7,9 +7,6 @@
 
 ## This HEPT Fork uses PQuant for pruning and quantization
 
-Pruning scripts are not yet uploaded.
-Quantization script is uploaded as tracking_quantization.py (can be modified easily for pruning as well)
-
 ## Datasets
 The quantization script has only been tested with tracking-600 dataset. Copy the tracking-600
 dataset to the folder data/tracking/processed/
