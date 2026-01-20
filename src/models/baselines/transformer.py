@@ -71,6 +71,8 @@ class Transformer(nn.Module):
         self.h_dim = kwargs["h_dim"]
         self.task = task
         self.use_ckpt = kwargs.get("use_ckpt", False)
+        self.mlp_out_hdim = kwargs['h_dim']//2
+        self.dim_per_head = kwargs["h_dim"]
 
         # discrete feature to embedding
         if self.task == "pileup":
@@ -89,14 +91,20 @@ class Transformer(nn.Module):
 
         self.dropout = nn.Dropout(0.1)
         self.W = nn.Linear(self.h_dim * (self.n_layers + 1), int(self.h_dim // 2), bias=False)
-        self.mlp_out = MLP(
-            in_channels=int(self.h_dim // 2),
-            out_channels=int(self.h_dim // 2),
-            hidden_channels=256,
-            num_layers=5,
-            norm="layer_norm",
-            act="tanh",
-            norm_kwargs={"mode": "node"},
+        self.mlp_out = nn.Sequential(
+            nn.Linear(int(self.dim_per_head // 2), self.mlp_out_hdim),
+            nn.LayerNorm(self.mlp_out_hdim),
+            nn.Tanh(),
+            nn.Linear(self.mlp_out_hdim, self.mlp_out_hdim),
+            nn.LayerNorm(self.mlp_out_hdim),
+            nn.Tanh(),
+            nn.Linear(self.mlp_out_hdim, self.mlp_out_hdim),
+            nn.LayerNorm(self.mlp_out_hdim),
+            nn.Tanh(),
+            nn.Linear(self.mlp_out_hdim, self.mlp_out_hdim),
+            nn.LayerNorm(self.mlp_out_hdim),
+            nn.Tanh(),
+            nn.Linear(self.mlp_out_hdim, int(self.dim_per_head // 2)),
         )
 
         self.helper_funcs = {}
@@ -125,9 +133,10 @@ class Transformer(nn.Module):
         if self.task == "pileup":
             pids_emb = self.pids_enc(x[..., -1].long())
             x = torch.cat((x[..., :-1], pids_emb), dim=-1)
-
+        print (data)
+        print (data['batch'])
         x, mask, kwargs = prepare_input(x, coords, edge_index, batch, self.attn_type, self.helper_funcs)
-        
+
         encoded_x = self.feat_encoder(x)
         all_encoded_x = [encoded_x]
         for i in range(self.n_layers):
