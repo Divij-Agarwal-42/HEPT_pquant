@@ -35,13 +35,16 @@ from pquant import (
 from quantizers.fixed_point.fixed_point_ops import get_fixed_quantizer
 
 import json
-PATH = "/home/divij/HEPT/data/tracking/logs/v2_ap/" # Change this
+PATH = "/home/divij/HEPT/data/tracking/logs/v3_wanda_0.6/" # Change this
 PQUANT_RESULTS = "pquant_results.txt"
 RESUME_MODEL_NAME = "best_model.pt" #"compressed_model.pth"
 
 excluded_from_pruning = [
     "feat_encoder.0",
     "feat_encoder.2",
+    "W"
+    "mlp_out.0",
+    "mlp_out.12"
 ]
 
 def save_config(config, filename = "pquant_config.txt"):
@@ -332,7 +335,7 @@ def run_one_seed(config):
 
     model = get_model(model_name, config["model_kwargs"], dataset)
 
-    pquant_config = prune_with_activation_pruning(excluded_from_pruning)
+    pquant_config = prune_with_wanda(excluded_from_pruning)
     input_shape = (1, 15)
     # pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=True)
 
