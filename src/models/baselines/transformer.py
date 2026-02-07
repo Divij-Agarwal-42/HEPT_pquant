@@ -71,7 +71,7 @@ class Transformer(nn.Module):
         self.h_dim = kwargs["h_dim"]
         self.task = task
         self.use_ckpt = kwargs.get("use_ckpt", False)
-        self.mlp_out_hdim = kwargs['h_dim']//2
+        self.mlp_out_hdim = 32 #kwargs['h_dim']//2
         self.dim_per_head = kwargs["h_dim"]
 
         # discrete feature to embedding
@@ -133,8 +133,6 @@ class Transformer(nn.Module):
         if self.task == "pileup":
             pids_emb = self.pids_enc(x[..., -1].long())
             x = torch.cat((x[..., :-1], pids_emb), dim=-1)
-        print (data)
-        print (data['batch'])
         x, mask, kwargs = prepare_input(x, coords, edge_index, batch, self.attn_type, self.helper_funcs)
 
         encoded_x = self.feat_encoder(x)

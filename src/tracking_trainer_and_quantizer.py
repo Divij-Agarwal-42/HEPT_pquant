@@ -35,14 +35,14 @@ from pquant import (
 from quantizers.fixed_point.fixed_point_ops import get_fixed_quantizer
 
 import json
-PATH = "/home/divij/HEPT/data/tracking/logs/v3_wanda_0.6/" # Change this
+PATH = "/home/divij/HEPT/data/tracking/logs/mlp_32_wanda_0.6/" # Change this
 PQUANT_RESULTS = "pquant_results.txt"
 RESUME_MODEL_NAME = "best_model.pt" #"compressed_model.pth"
 
 excluded_from_pruning = [
     "feat_encoder.0",
     "feat_encoder.2",
-    "W"
+    "W",
     "mlp_out.0",
     "mlp_out.12"
 ]
@@ -73,7 +73,7 @@ def prune_with_wanda(excluded_layers):
     # config["pruning_parameters"]["M"] = 4
 
     config["training_parameters"]["pretraining_epochs"] = pretraining_rounds
-    config["training_parameters"]["epochs"] = 10
+    config["training_parameters"]["epochs"] = 20
 
     return config
 
