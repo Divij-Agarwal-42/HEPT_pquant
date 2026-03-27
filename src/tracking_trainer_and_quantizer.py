@@ -1,3 +1,8 @@
+# This script prunes and quantizes HEPT using activation pruning and fixed-point quantization.
+# It saves the best compressed model (checks every epoch) based on validation accuracy.
+# Change the PATH variable to set where to save the model and logs.
+# If you want to resume from a previous model, set the RESUME_MODEL_NAME variable accordingly.
+
 import nni
 import yaml
 import argparse
@@ -5,7 +10,6 @@ from tqdm import tqdm
 from pathlib import Path
 from copy import deepcopy
 from datetime import datetime
-
 import numpy as np
 import torch
 from torchmetrics import MeanMetric
@@ -13,38 +17,130 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau, LambdaLR, StepLR
 from torch_geometric.utils import unbatch, remove_self_loops, to_undirected, subgraph
 from torch_geometric.nn import knn_graph, radius_graph
-
 from utils import set_seed, get_optimizer, log, get_lr_scheduler, add_random_edge, get_loss
 from utils.get_data import get_data_loader, get_dataset
 from utils.get_model import get_model
 from utils.metrics import acc_and_pr_at_k, point_filter
-
 import os
-os.environ["KERAS_BACKEND"] = "torch" # Needs to be set, some pruning layers as well as the quantizers are Keras
-# import keras
+os.environ["KERAS_BACKEND"] = "torch"  # Some pruning layers / quantizers expect Keras backend env var
 import torch.nn.functional as F
-# keras.backend.set_image_data_format("channels_first")
-
-from pquant import get_default_config
-from pquant import add_compression_layers
-from pquant import iterative_train
-from pquant import get_layer_keep_ratio, get_model_losses
+from pquant import (
+    ap_config,
+    add_compression_layers,
+    pdp_config,
+    train_model,
+    wanda_config,
+    get_layer_keep_ratio,
+    get_model_losses,
+    # remove_pruning_from_model,
+    apply_final_compression
+)
 from quantizers.fixed_point.fixed_point_ops import get_fixed_quantizer
-from pquant import remove_pruning_from_model
 
-
-# Specify path where files related to PQuant's run will be saved
-PATH = f""
+import json
+PATH = "/home/divij/HEPT/data/tracking/logs/new-pquant-change/" # Change this
 PQUANT_RESULTS = "pquant_results.txt"
+RESUME_MODEL_NAME = "best_model.pt" #"compressed_model.pth"
+
+excluded_from_pruning = [
+    "feat_encoder.0",
+    "feat_encoder.2",
+    "W",
+    "mlp_out.0",
+    "mlp_out.12"
+]
+
+def save_config(config, filename = "pquant_config.txt"):
+    return # Temporarily disabled since it's crashing after updating pquant
+    print(f"OUTPUTTING CONFIG SETTINGS TO {PATH + filename}")
+    def to_plain_object(obj):
+        if isinstance(obj, dict):
+            return {key: to_plain_object(value) for key, value in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [to_plain_object(value) for value in obj]
+        if hasattr(obj, "__dict__"):
+            return to_plain_object(vars(obj))
+        return obj
+
+    with open(PATH + filename, "w") as f:
+        json.dump(to_plain_object(config), f, indent=4)
 
 def enable_quantization(config, i, f, hgq=True):
-    config["quantization_parameters"]["enable_quantization"] = True
-    config["quantization_parameters"]["default_fractional_bits"] = f
-    config["quantization_parameters"]["default_integer_bits"] = i
-    config["quantization_parameters"]["use_symmetric_quantization"] = True
-    config["quantization_parameters"]["use_high_granularity_quantization"] = hgq
+    config.quantization_parameters.enable_quantization = True
+    config.quantization_parameters.default_fractional_bits = f
+    config.quantization_parameters.default_integer_bits = i
+    config.quantization_parameters.use_symmetric_quantization = True
+    config.quantization_parameters.use_high_granularity_quantization = hgq
 
     return config
+
+def prune_with_wanda(excluded_layers):
+    pretraining_rounds = 1
+    config = wanda_config()
+    config.pruning_parameters.enable_pruning = True
+    config.pruning_parameters.t_delta = 5
+    config.pruning_parameters.t_start_collecting_batch = 5
+    config.pruning_parameters.sparsity = 0.6
+    config.pruning_parameters.disable_pruning_for_layers = excluded_layers
+    # config.pruning_parameters.N = 2
+    # config.pruning_parameters.M = 4
+
+    config.training_parameters.pretraining_epochs = pretraining_rounds
+    config.training_parameters.epochs = 20
+
+    return config
+
+def prune_with_pdp(excluded_layers):
+    pretraining_rounds = 1
+    config = pdp_config()
+    pruning_cfg = config.pruning_parameters
+    pruning_cfg.enable_pruning = True
+    # pruning_cfg.sparsity = 0.8
+    # pruning_cfg.epsilon = 0.05
+    # pruning_cfg.temperature = 1e-5
+    # pruning_cfg.structured_pruning = False
+    pruning_cfg.disable_pruning_for_layers = excluded_layers
+
+    training_cfg = config.training_parameters
+    training_cfg.pretraining_epochs = 10
+    # training_cfg.fine_tuning_epochs = 0
+    # training_cfg.epochs = 10
+    # training_cfg.pruning_first = False
+    # training_cfg.rewind = "never"
+    # training_cfg.rounds = 1
+    return config
+
+def prune_with_activation_pruning(excluded_layers):
+    # pruning_methods: "autosparse, cl, cs, dst, pdp, wanda"
+    config = ap_config()
+    # Set target sparsity to 80% (20% of weights are non-zero). This parameter exists only for some pruning methods
+    # config.pruning_parameters.sparsity = 0.8
+    # save_config(config, filename = "pquant_config.txt")
+
+    config.pruning_parameters.enable_pruning = True
+    config.training_parameters.epochs = 100
+    config.training_parameters.pretraining_epochs = 10
+    config.pruning_parameters.threshold = 0.3
+
+    config.pruning_parameters.disable_pruning_for_layers = excluded_layers
+
+    return config
+
+def total_weights(model):
+    total = sum(p.numel() for name, p in model.named_parameters() if "weight" in name)
+    return total
+
+def weights_for_layers(model, layer_names):
+    layer_names = set(layer_names)  # faster lookup
+    total = 0
+    for name, param in model.named_parameters():
+        # Check if the parameter belongs to any of the specified layers
+        if "weight" in name:
+            prefix = ".".join(name.split(".")[:-1])  # remove .weight or .bias
+            if prefix in layer_names:
+                total += param.numel()
+    return total
+
 
 def train_one_batch(model, optimizer, criterion, data, lr_s):
     model.train()
@@ -59,12 +155,14 @@ def train_one_batch(model, optimizer, criterion, data, lr_s):
         lr_s.step()
     return loss.item(), embeddings.detach(), data.particle_id.detach()
 
+
 @torch.no_grad()
 def eval_one_batch(model, optimizer, criterion, data, lr_s):
     model.eval()
     embeddings = model(data)
     loss = criterion(embeddings, data.point_pairs_index, data.particle_id, data.reconstructable, data.pt)
     return loss.item(), embeddings.detach(), data.particle_id.detach()
+
 
 def process_data(data, phase, device, epoch, p=0.2):
     data = data.to(device)
@@ -76,6 +174,7 @@ def process_data(data, phase, device, epoch, p=0.2):
         data.point_pairs_index = torch.cat([data.point_pairs_index, pairs_to_add], dim=1)
 
     return data
+
 
 def run_one_epoch(model, optimizer, criterion, data_loader, phase, epoch, device, metrics, lr_s):
     run_one_batch = train_one_batch if phase == "train" else eval_one_batch
@@ -100,9 +199,9 @@ def run_one_epoch(model, optimizer, criterion, data_loader, phase, epoch, device
             loss, acc = (metric_res["loss"], metric_res["accuracy@0.9"])
             prec, recall = metric_res["precision@0.9"], metric_res["recall@0.9"]
             desc = f"[Epoch {epoch}] {phase}, loss: {loss:.4f}, acc: {acc:.4f}, prec: {prec:.4f}, recall: {recall:.4f}"
-            reset_metrics(metrics)  
+            reset_metrics(metrics)
         pbar.set_description(desc)
-    return metric_res   
+    return metric_res
 
 
 def reset_metrics(metrics):
@@ -149,6 +248,7 @@ def train_for_pquant(model, trainloader, device, loss_func, epoch, optimizer, sc
             f"[Epoch {epoch}] train: {train_res[main_metric]:.4f}, "
         )
 
+
 def validate_and_test_for_pquant(model, testloader, device, loss_func, epoch, *args, **kwargs):
     lr_s = kwargs["scheduler"]
     metrics = kwargs["metrics"]
@@ -167,28 +267,52 @@ def validate_and_test_for_pquant(model, testloader, device, loss_func, epoch, *a
     valid_res = run_one_epoch(model, opt, criterion, loaders["valid"], "valid", epoch, device, metrics, lr_s)
     test_res = run_one_epoch(model, opt, criterion, loaders["test"], "test", epoch, device, metrics, lr_s)
 
+    total_model_weights = total_weights(model)
+    excluded_weights_count = weights_for_layers(model, excluded_from_pruning)
+
+    ratio = get_layer_keep_ratio(model)
+    ratio = (excluded_weights_count + (ratio * (total_model_weights - excluded_weights_count))) / total_model_weights
+
+    with open(PATH + PQUANT_RESULTS, "a") as f:
+        f.write(
+            f"\nremaining_weights: {ratio * 100:.2f}%\n"
+        )
+    print(f"\nremaining_weights: {ratio * 100:.2f}%\n")
+
     if lr_s is not None:
         if isinstance(lr_s, ReduceLROnPlateau):
             lr_s.step(valid_res[config["lr_scheduler_metric"]])
         elif isinstance(lr_s, StepLR):
             lr_s.step()
 
-    if ((valid_res[main_metric] * coef) > (best_valid[main_metric] * coef)):
+    if ((valid_res[main_metric] * coef) > (best_valid[main_metric] * coef) and (int(ratio) != 1)):
         best_valid.update(valid_res)
         #torch.save(model.state_dict(), log_dir / "best_model.pt")
-        compressed_model = remove_pruning_from_model(model, pquant_config)
+        compressed_model = apply_final_compression(model, pquant_config)
         compressed_model.to(device)
         torch.save(compressed_model.state_dict(), PATH + "compressed_model.pth")
-        print(f"New best compressed model found, saved at: \n{PATH + 'compressed_model.pth'}\n")
+        print(f"New best compressed model found, saved at: \n{PATH + 'compressed_model.pth'}")
 
         with open(PATH + "best_model_stats.txt", "w") as f:
             f.write(
-                # f"remaining_weights: {ratio * 100:.2f}%\n"
+                f"remaining_weights: {ratio * 100:.2f}%\n"
                 f"valid: {valid_res[main_metric]:.4f}, test: {test_res[main_metric]:.4f}\n\n"
-                f"Integer bits: {pquant_config['quantization_parameters']['default_integer_bits']} | "
-                f"Fractional bits: {pquant_config['quantization_parameters']['default_fractional_bits']}\n\n"
-                f"{compressed_model.state_dict()}"
             )
+
+            f.write(
+                # f"remaining_weights: {ratio * 100:.2f}%\n"
+                f"Integer bits: {pquant_config.quantization_parameters.default_integer_bits} | "
+                f"Fractional bits: {pquant_config.quantization_parameters.default_fractional_bits}\n\n"
+            )
+
+            for name, param in compressed_model.named_parameters():
+                if param.requires_grad:
+                    num_params = param.numel()
+                    num_zeros = (param.cpu() == 0).sum().item()
+                    percent = 100 * num_zeros / num_params
+                    f.write(
+                        f"{name}: {num_zeros} / {num_params} zero weights ({percent:.2f}%)\n"
+                    )
 
 
     with open(PATH + PQUANT_RESULTS, "a") as f:
@@ -223,24 +347,25 @@ def run_one_seed(config):
 
     model = get_model(model_name, config["model_kwargs"], dataset)
 
-    pruning_method = "ap"
-    pquant_config = get_default_config(pruning_method)
-    pquant_config["pruning_parameters"]["enable_pruning"] = False
-    pquant_config["training_parameters"]["epochs"] = 3
-    pquant_config["training_parameters"]["pretraining_epochs"] = 0
-    input_shape = (1, 15) # Doesn't matter for "ap" pruning method
+    pquant_config = prune_with_wanda(excluded_from_pruning)
+    input_shape = (1, 15)
+    # pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=True)
 
-    pquant_config = enable_quantization(pquant_config, i=7, f=8, hgq=False)
-    model = add_compression_layers(model, pquant_config, input_shape)
+    pquant_config.pruning_parameters.enable_pruning = True
+    pquant_config.quantization_parameters.enable_quantization = False
+
+    save_config(pquant_config, filename = "pquant_config.txt")
 
     if config.get("only_flops", False):
         raise RuntimeError
     if config.get("resume", False):
         log(f"Resume from {config['resume']}")
-        model_path = dataset_dir / "logs" / (config["resume"] + "/best_model.pt")
+        model_path = dataset_dir / "logs" / (config["resume"] + f"/{RESUME_MODEL_NAME}")
         checkpoint = torch.load(model_path, map_location="cpu")
         model.load_state_dict(checkpoint, strict=True)
     model = model.to(device)
+    model = add_compression_layers(model, pquant_config, input_shape)
+
 
     opt = get_optimizer(model.parameters(), config["optimizer_name"], config["optimizer_kwargs"])
     config["lr_scheduler_kwargs"]["num_training_steps"] = config["num_epochs"] * len(loaders["train"])
@@ -268,7 +393,7 @@ def run_one_seed(config):
         }
         writer.add_custom_scalars(layout)
 
-    trained_model = iterative_train(model = model, 
+    trained_model = train_model(model = model, 
                                 config = pquant_config, 
                                 train_func = train_for_pquant,
                                 valid_func = validate_and_test_for_pquant, 
@@ -297,6 +422,7 @@ def main():
         config_dir = Path(f"./configs/tracking/tracking_trans_{args.model}.yaml")
     config = yaml.safe_load(config_dir.open("r").read())
     run_one_seed(config)
+
 
 if __name__ == "__main__":
     main()
