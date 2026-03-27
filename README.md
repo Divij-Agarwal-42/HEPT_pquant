@@ -10,6 +10,7 @@
 Script for pruning and quantization is uploaded as `src/tracking_quantizer_and_pruner.py`
 
 There are 2 existing PyTorch model files present under `data/tracking/logs/`:
+
 Note: These are old results
 + Quantized model: Quantized using Fixed point representation (1 sign bit, 7 integer bits, 8 fractional bits), accuracy on tracking-600 is ~87%
 + Pre trained model: Non quantized version with accuracy on tracking-600 as ~89%, regions = 1
