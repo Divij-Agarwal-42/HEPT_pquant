@@ -7,10 +7,10 @@
 
 ## This HEPT Fork uses PQuant for pruning and quantization
 
-Pruning scripts are not yet uploaded.
-Quantization script is uploaded as `src/tracking_quantization.py` (can be modified easily for pruning as well)
+Script for pruning and quantization is uploaded as `src/tracking_quantizer_and_pruner.py`
 
 There are 2 existing PyTorch model files present under `data/tracking/logs/`:
+Note: These are old results
 + Quantized model: Quantized using Fixed point representation (1 sign bit, 7 integer bits, 8 fractional bits), accuracy on tracking-600 is ~87%
 + Pre trained model: Non quantized version with accuracy on tracking-600 as ~89%, regions = 1
 
@@ -29,19 +29,20 @@ pip install torch_scatter==2.1.2 torch_cluster==1.6.3 -f https://data.pyg.org/wh
 pip install --no-deps git+https://github.com/calad0i/HGQ2.git
 ```
 
-Download PQuant manually, `git clone -b MDMM https://github.com/ArghyaDas112358/PQuant.git`<br><br>
-Then, go to  `src/pquant/core/torch_impl/compressed_layers_torch.py` and comment out the line: `model(torch.rand(input_shape, device=next(model.parameters()).device))`<br><br>
+Download PQuant manually, `git clone -b MDMM https://github.com/cern-nextgen/PQuantML`<br><br>
+Then, go to  `src/pquant/core/torch/layers.py` and comment out the line: `model(torch.rand(input_shape).to("cuda"))`<br><br>
 Now, install PQuant using `pip install <Path to PQuant>`
 
 #### Running the code
 
-For running the training of the quantized version use
+Before running the code, change the "PATH" variable in `tracking_quantizer_and_pruner.py` to the folder path that you want the logs to go in.
+
+For running the pruning / quantization script
 ```
-python tracking_quantizer.py -m hept
+python tracking_quantizer_and_pruner.py
 ```
 
 Configurations will be loaded from those located in `./configs/` directory.
-Quantization script was tested with resuming training from a pretrained (non quantized) model with regions = 1
 
 <br>
 
