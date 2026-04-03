@@ -67,9 +67,9 @@ def save_config(config, filename = "pquant_config.txt"):
 
 def enable_quantization(config, i, f, hgq=True):
     config.quantization_parameters.enable_quantization = True
-    config.quantization_parameters.default_fractional_bits = f
-    config.quantization_parameters.default_integer_bits = i
-    config.quantization_parameters.use_symmetric_quantization = True
+    config.quantization_parameters.default_data_fractional_bits = f
+    config.quantization_parameters.default_data_integer_bits = i
+    # config.quantization_parameters.use_symmetric_quantization = True
     config.quantization_parameters.use_high_granularity_quantization = hgq
 
     return config
@@ -288,7 +288,7 @@ def validate_and_test_for_pquant(model, testloader, device, loss_func, epoch, *a
     if ((valid_res[main_metric] * coef) > (best_valid[main_metric] * coef) and (int(ratio) != 1)):
         best_valid.update(valid_res)
         #torch.save(model.state_dict(), log_dir / "best_model.pt")
-        compressed_model = apply_final_compression(model, pquant_config)
+        compressed_model = apply_final_compression(model)
         compressed_model.to(device)
         torch.save(compressed_model.state_dict(), PATH + "compressed_model.pth")
         print(f"New best compressed model found, saved at: \n{PATH + 'compressed_model.pth'}")
@@ -301,8 +301,8 @@ def validate_and_test_for_pquant(model, testloader, device, loss_func, epoch, *a
 
             f.write(
                 # f"remaining_weights: {ratio * 100:.2f}%\n"
-                f"Integer bits: {pquant_config.quantization_parameters.default_integer_bits} | "
-                f"Fractional bits: {pquant_config.quantization_parameters.default_fractional_bits}\n\n"
+                f"Integer bits: {pquant_config.quantization_parameters.default_data_integer_bits} | "
+                f"Fractional bits: {pquant_config.quantization_parameters.default_data_fractional_bits}\n\n"
             )
 
             for name, param in compressed_model.named_parameters():
@@ -349,10 +349,10 @@ def run_one_seed(config):
 
     pquant_config = prune_with_wanda(excluded_from_pruning)
     input_shape = (1, 15)
-    # pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=True)
+    pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=True)
 
-    pquant_config.pruning_parameters.enable_pruning = True
-    pquant_config.quantization_parameters.enable_quantization = False
+    pquant_config.pruning_parameters.enable_pruning = False
+    pquant_config.quantization_parameters.enable_quantization = True
 
     save_config(pquant_config, filename = "pquant_config.txt")
 
