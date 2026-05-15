@@ -85,6 +85,7 @@ def enable_quantization(config, i, f, hgq=True):
     qp.quantize_input = True
     qp.quantize_output = False
     qp.granularity = "per_tensor"
+    qp.use_relu_multiplier = True
 
     qp.hgq_gamma = 0.0003
     qp.hgq_beta = 1e-5

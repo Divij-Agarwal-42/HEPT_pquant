@@ -1,6 +1,7 @@
 config-new.txt
 config-old.txt
 src/tracking_quantizer.py
+src/tracking_tester.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
