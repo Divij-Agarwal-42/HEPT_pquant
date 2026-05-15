@@ -67,8 +67,9 @@ def save_config(config, filename = "pquant_config.txt"):
 
 def enable_quantization(config, i, f, hgq=True):
     config.quantization_parameters.enable_quantization = True
-    config.quantization_parameters.default_data_fractional_bits = f
-    config.quantization_parameters.default_data_integer_bits = i
+    config.quantization_parameters.default_weight_fractional_bits = f
+    config.quantization_parameters.default_weight_integer_bits = i
+    
     # config.quantization_parameters.use_symmetric_quantization = True
     config.quantization_parameters.use_high_granularity_quantization = hgq
 
@@ -321,6 +322,13 @@ def validate_and_test_for_pquant(model, testloader, device, loss_func, epoch, *a
             f"\n\n"
         )
 
+def pquant_master_settings(pquant_config, quantization_status, pruning_status):
+    pquant_config.pruning_parameters.enable_pruning = pruning_status # Global switch to enable / disable pquant pruning
+    pquant_config.quantization_parameters.enable_quantization = quantization_status # Global switch to enable / disable pquant quantization
+
+
+    return pquant_config
+
 
 def run_one_seed(config):
     # Set device, number of threads
@@ -349,10 +357,8 @@ def run_one_seed(config):
 
     pquant_config = prune_with_wanda(excluded_from_pruning)
     input_shape = (1, 15)
-    pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=True)
-
-    pquant_config.pruning_parameters.enable_pruning = False
-    pquant_config.quantization_parameters.enable_quantization = True
+    pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=False)
+    pquant_config = pquant_master_settings(pquant_config, quantization_status=True, pruning_status=False)
 
     save_config(pquant_config, filename = "pquant_config.txt")
 
