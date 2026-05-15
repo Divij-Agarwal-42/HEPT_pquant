@@ -51,43 +51,72 @@ excluded_from_pruning = [
 ]
 
 def save_config(config, filename = "pquant_config.txt"):
-    return # Temporarily disabled since it's crashing after updating pquant
-    print(f"OUTPUTTING CONFIG SETTINGS TO {PATH + filename}")
-    def to_plain_object(obj):
-        if isinstance(obj, dict):
-            return {key: to_plain_object(value) for key, value in obj.items()}
-        if isinstance(obj, (list, tuple)):
-            return [to_plain_object(value) for value in obj]
-        if hasattr(obj, "__dict__"):
-            return to_plain_object(vars(obj))
-        return obj
+    def serialize(value):
+        if hasattr(value, "model_dump"):
+            return value.model_dump(mode="json")
+        if hasattr(value, "dict"):
+            return {key: serialize(val) for key, val in value.dict().items()}
+        if isinstance(value, dict):
+            return {key: serialize(val) for key, val in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [serialize(item) for item in value]
+        if hasattr(value, "value"):
+            return value.value
+        return value
 
     with open(PATH + filename, "w") as f:
-        json.dump(to_plain_object(config), f, indent=4)
+        json.dump(serialize(config), f, indent=4)
+        f.write("\n")
 
 def enable_quantization(config, i, f, hgq=True):
-    config.quantization_parameters.enable_quantization = True
-    config.quantization_parameters.default_weight_fractional_bits = f
-    config.quantization_parameters.default_weight_integer_bits = i
-    
-    # config.quantization_parameters.use_symmetric_quantization = True
-    config.quantization_parameters.use_high_granularity_quantization = hgq
+    qp = config.quantization_parameters
+
+    qp.enable_quantization = True
+
+    qp.default_weight_integer_bits = i
+    qp.default_weight_fractional_bits = f
+
+    qp.default_data_integer_bits = i
+    qp.default_data_fractional_bits = f
+
+    qp.default_weight_keep_negatives = 1.0
+    qp.default_data_keep_negatives = 0.0
+
+    qp.quantize_input = True
+    qp.quantize_output = False
+    qp.granularity = "per_tensor"
+
+    qp.hgq_gamma = 0.0003
+    qp.hgq_beta = 1e-5
+    qp.hgq_heterogeneous = True
+    qp.use_high_granularity_quantization = hgq
+
+    qp.overflow_mode_parameters = "SAT"
+    qp.overflow_mode_data = "SAT"
+    qp.round_mode = "RND"
 
     return config
 
 def prune_with_wanda(excluded_layers):
-    pretraining_rounds = 1
     config = wanda_config()
-    config.pruning_parameters.enable_pruning = True
-    config.pruning_parameters.t_delta = 5
-    config.pruning_parameters.t_start_collecting_batch = 5
-    config.pruning_parameters.sparsity = 0.6
-    config.pruning_parameters.disable_pruning_for_layers = excluded_layers
-    # config.pruning_parameters.N = 2
-    # config.pruning_parameters.M = 4
 
-    config.training_parameters.pretraining_epochs = pretraining_rounds
-    config.training_parameters.epochs = 20
+    pp = config.pruning_parameters
+    pp.enable_pruning = True
+    pp.pruning_method = "wanda"
+    pp.calculate_pruning_budget = True
+    pp.t_delta = 5
+    pp.t_start_collecting_batch = 5
+    pp.sparsity = 0.5
+    pp.disable_pruning_for_layers = excluded_layers
+    pp.N = None
+    pp.M = None
+
+    tp = config.training_parameters
+    tp.pretraining_epochs = 1
+    tp.epochs = 60
+    tp.fine_tuning_epochs = 0
+    tp.rounds = 1
+    tp.pruning_first = False  # keep old behavior; set True to prune then quantize
 
     return config
 
@@ -358,7 +387,7 @@ def run_one_seed(config):
     pquant_config = prune_with_wanda(excluded_from_pruning)
     input_shape = (1, 15)
     pquant_config = enable_quantization(pquant_config, i=5, f=5, hgq=False)
-    pquant_config = pquant_master_settings(pquant_config, quantization_status=True, pruning_status=False)
+    pquant_config = pquant_master_settings(pquant_config, quantization_status=False, pruning_status=True)
 
     save_config(pquant_config, filename = "pquant_config.txt")
 
