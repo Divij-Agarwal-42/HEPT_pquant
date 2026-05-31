@@ -47,42 +47,9 @@ Configurations will be loaded from those located in `./configs/` directory.
 
 <br>
 
-## TODO
-- [ ] Put more details in the README.
-- [ ] Add support for FlashAttn.
-- [x] Add support for efficient processing of batched input.
-- [x] Add an example of HEPT with minimal code.
+Current issue - Unable to replicate results with PQuant's new changes.
 
-## News
-- **2024.06:** HEPT has been accepted to ICML 2024 and is selected as an oral presentation (144/9473, 1.5% acceptance rate)!
-- **2024.04:** HEPT now supports efficient processing of batched input by this [commit](https://github.com/Graph-COM/HEPT/commit/2e408388a16400050c0eb4c4f7390c3c24078dee). This is implemented via integrating batch indices in the computation of AND hash codes, which is more efficient than naive padding, especially for batches with imbalanced point cloud sizes. **Note:**
-  - Only the code in `./example` is updated to support batched input, and the original implementation in `./src` is not updated.
-  - The current implementation for batched input is not yet fully tested. Please feel free to open an issue if you encounter any problems.
-
-- **2024.04:** An example of HEPT with minimal code is added in `./example` by this [commit](https://github.com/Graph-COM/HEPT/commit/350a9863d7757e556177c52a44bac2aaf0c6dde8). It's a good starting point for users who want to use HEPT in their own projects. There are minor differences between the example and the original implementation in `./src/models/attention/hept.py`, but they should not affect the performance of the model.
-
-
-## Introduction
-This study introduces a novel transformer model optimized for large-scale point cloud processing in scientific domains such as high-energy physics (HEP) and astrophysics. Addressing the limitations of graph neural networks and standard transformers, our model integrates local inductive bias and achieves near-linear complexity with hardware-friendly regular operations. One contribution of this work is the quantitative analysis of the error-complexity tradeoff of various sparsification techniques for building efficient transformers. Our findings highlight the superiority of using locality-sensitive hashing (LSH), especially OR \& AND-construction LSH, in kernel approximation for large-scale point cloud data with local inductive bias. Based on this finding, we propose LSH-based Efficient Point Transformer (**HEPT**), which combines E2LSH with OR \& AND constructions and is built upon regular computations. HEPT demonstrates remarkable performance in two critical yet time-consuming HEP tasks, significantly outperforming existing GNNs and transformers in accuracy and computational speed, marking a significant advancement in geometric deep learning and large-scale scientific data processing.
-
-<p align="center"><img src="./data/HEPT.png" width=85% height=85%></p>
-<p align="center"><em>Figure 1.</em>Pipline of HEPT.</p>
-## FAQ
-
-#### How to tune the hyperparameters of HEPT?
-There are three key hyperparameters in HEPT:
-- `block_size`: block size for attention computation
-- `n_hashes`: the number of hash tables, i.e., OR LSH
--  `num_regions`: # of regions HEPT will randomly divide the input space into (Sec. 4.3 in the paper)
-
-We suggest first determine `block_size` and `n_hashes` according to the computational budget, but generally `n_hashes` should be greater than 1. `num_regions` should be tuned according to the local inductive bias of the dataset.
-
-
-## Reference
-```bibtex
-@article{miao2024locality,
-  title   = {Locality-Sensitive Hashing-Based Efficient Point Transformer with Applications in High-Energy Physics},
-  author  = {Miao, Siqi and Lu, Zhiyuan and Liu, Mia and Duarte, Javier and Li, Pan},
-  journal = {International Conference on Machine Learning},
-  year    = {2024}
-}
+## TODOs
+- [ ] Use PQuant's dev branch to check if pruning / quantization works with that.
+- [ ] When pruning, try using `print(model)` to see if pruning layers are being configured.
+- [ ] Input shape (right now it is arbitary) being passed to PQuant might matter, not running the model once on any input might be a problem.
